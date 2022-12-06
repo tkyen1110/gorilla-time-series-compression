@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Iterable, Union
 import warnings
 
@@ -43,12 +44,12 @@ class TimestampsEncoder:
         to the minimum delta.
 
         (a) Calculate the delta of delta
-                D = (t_n − t_(n−1)) − (t_(n−1) − t_(n−2))
-        (b) If D is zero, then store a single ‘0’ bit
-        (c) If D is between [-63, 64], store ‘10’ followed by the value (7 bits)
-        (d) If D is between [-255, 256], store ‘110’ followed by the value (9 bits)
-        (e) if D is between [-2047, 2048], store ‘1110’ followed by the value (12 bits)
-        (f) Otherwise store ‘1111’ followed by D using 32 bits
+                D = (t_n - t_(n-1)) - (t_(n-1) - t_(n-2))
+        (b) If D is zero, then store a single '0' bit
+        (c) If D is between [-63, 64], store '10' followed by the value (7 bits)
+        (d) If D is between [-255, 256], store '110' followed by the value (9 bits)
+        (e) if D is between [-2047, 2048], store '1110' followed by the value (12 bits)
+        (f) Otherwise store '1111' followed by D using 32 bits
 
         Parameters
         ----------
@@ -121,12 +122,10 @@ class TimestampsEncoder:
                 self.bit_array.extend(control_value)
                 # Make this value between [0, max_value]
                 encoded_value = delta_of_delta + max_value
-
                 self.bit_array += util.int2ba(encoded_value,
                                               length=bits_for_value,
                                               endian='big')
                 break
-
         self.previous_timestamp = timestamp
         self.previous_delta = delta
 
@@ -135,6 +134,7 @@ class TimestampsEncoder:
     def get_encoded(self) -> TimestampsGorillaContent:
         result: TimestampsGorillaContent = {
             'encoded': self.bit_array.tobytes(),
+            'codelen': len(self.bit_array),
             'nb_timestamps': self.nb_timestamps
         }
 
@@ -144,5 +144,8 @@ class TimestampsEncoder:
     def encode_all(timestamps: Iterable[int]) -> TimestampsGorillaContent:
         ts_encoder = TimestampsEncoder()
         for ts in timestamps:
-            ts_encoder.encode_next(ts)
+            if isinstance(ts, np.generic):
+                ts_encoder.encode_next(ts.item())
+            else:
+                ts_encoder.encode_next(ts)
         return ts_encoder.get_encoded()
